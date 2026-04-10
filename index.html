@@ -360,6 +360,7 @@ function initLevel(lvl) {
     card.className = "card";
     card.textContent = p.word;
     card.dataset.index = i;
+    card.dataset.answer = p.meaning;  // 直接存正确答案
     card.dataset.side = "left";
     card.addEventListener("click", () => onCardClick(card));
     leftCol.appendChild(card);
@@ -412,9 +413,7 @@ function onCardClick(card) {
 }
 
 function checkMatch() {
-  const lvl = LEVELS[currentLevel];
-  const wordIdx = parseInt(selectedLeft.dataset.index);
-  const correctMeaning = lvl.pairs[wordIdx].meaning;
+  const correctMeaning = selectedLeft.dataset.answer;  // 直接从卡片取正确答案
   const chosenMeaning = selectedRight.dataset.meaning;
 
   if (correctMeaning === chosenMeaning) {
@@ -504,10 +503,9 @@ function showHintForSelected() {
     document.getElementById("hint").textContent = "💡 先点击左边一个词语，再点击提示按钮！";
     return;
   }
-  const idx = parseInt(selectedLeft.dataset.index);
-  const meaning = LEVELS[currentLevel].pairs[idx].meaning;
+  const meaning = selectedLeft.dataset.answer;  // 直接从卡片取正确答案
   document.getElementById("hint").textContent = `💡 「${selectedLeft.textContent}」的意思是：${meaning}`;
-  score = Math.max(0, score - 2); // 提示扣2分
+  score = Math.max(0, score - 2);
   document.getElementById("score").textContent = score;
 }
 
