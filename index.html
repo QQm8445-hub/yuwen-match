@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>语文词语连线大闯关</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "楷体", "KaiTi", "STKaiti", serif;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: #c0392b;
+      text-shadow: 2px 2px 4px rgba(255,255,255,0.6);
+      margin-bottom: 6px;
+      letter-spacing: 4px;
+    }
+
+    .subtitle {
+      color: #6d4c41;
+      font-size: 1rem;
+      margin-bottom: 16px;
+    }
+
+    /* 积分 & 关卡 */
+    .hud {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 20px;
+    }
+    .hud-box {
+      background: #fff8e1;
+      border-radius: 14px;
+      padding: 8px 22px;
+      font-size: 1.1rem;
+      color: #e67e22;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      font-weight: bold;
+    }
+
+    /* 游戏区 */
+    .game-area {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 140px;
+    }
+
+    .card {
+      background: #fff;
+      border: 3px solid #f0c040;
+      border-radius: 16px;
+      padding: 14px 22px;
+      font-size: 1.25rem;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      user-select: none;
+      min-width: 120px;
+      color: #333;
+    }
+    .card:hover { transform: scale(1.07); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+    .card.selected {
+      background: #fff9c4;
+      border-color: #e74c3c;
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(231,76,60,0.35);
+    }
+    .card.matched {
+      background: #d5f5e3;
+      border-color: #27ae60;
+      color: #1e8449;
+      cursor: default;
+      transform: scale(1.0);
+      animation: pop 0.4s ease;
+    }
+    .card.wrong {
+      animation: shake 0.4s ease;
+      border-color: #e74c3c;
+      background: #fdecea;
+    }
+    .card.hidden { visibility: hidden; }
+
+    @keyframes pop {
+      0%   { transform: scale(1.0); }
+      50%  { transform: scale(1.18); }
+      100% { transform: scale(1.0); }
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-8px); }
+      75%      { transform: translateX(8px); }
+    }
+
+    /* SVG 连线层 */
+    #line-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 连线颜色 */
+    .match-line {
+      stroke-width: 4;
+      stroke-linecap: round;
+      fill: none;
+      opacity: 0.7;
+    }
+
+    /* 提示 & 按钮 */
+    .hint-box {
+      margin-top: 18px;
+      background: #fff3cd;
+      border-radius: 12px;
+      padding: 10px 24px;
+      font-size: 1.05rem;
+      color: #856404;
+      min-height: 44px;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    button {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 28px;
+      font-size: 1.1rem;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(231,76,60,0.35);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    button:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(231,76,60,0.45); }
+    button.secondary {
+      background: #2980b9;
+      box-shadow: 0 4px 12px rgba(41,128,185,0.35);
+    }
+
+    /* 完成弹窗 */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .modal {
+      background: #fffde7;
+      border-radius: 24px;
+      padding: 40px 50px;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+      animation: pop 0.5s ease;
+    }
+    .modal h2 { font-size: 2rem; color: #c0392b; margin-bottom: 12px; }
+    .modal p  { font-size: 1.15rem; color: #555; margin-bottom: 20px; }
+    .stars    { font-size: 2.5rem; letter-spacing: 6px; }
+
+    /* 进度条 */
+    .progress-wrap {
+      width: 100%;
+      max-width: 500px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 20px;
+      height: 14px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #f39c12, #e74c3c);
+      border-radius: 20px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+  </style>
+</head>
+<body>
+
+<svg id="line-canvas"></svg>
+
+<h1>🐉 词语连线大闯关</h1>
+<p class="subtitle">人教版语文·词语理解专项练习</p>
+
+<div class="hud">
+  <div class="hud-box">🏅 积分：<span id="score">0</span></div>
+  <div class="hud-box">📖 关卡：<span id="level-display">1</span> / <span id="total-levels">3</span></div>
+</div>
+
+<div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+
+<div class="game-area">
+  <div class="column" id="left-col"></div>
+  <div class="column" id="right-col"></div>
+</div>
+
+<div class="hint-box" id="hint">点击左边的词语，再点击右边对应的解释，完成连线！</div>
+
+<div class="btn-row">
+  <button onclick="resetLevel()">🔄 重新本关</button>
+  <button class="secondary" onclick="showHintForSelected()">💡 提示</button>
+</div>
+
+<!-- 完成弹窗 -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="stars" id="modal-stars">⭐⭐⭐</div>
+    <h2 id="modal-title">太棒了！</h2>
+    <p id="modal-msg">你完成了本关！</p>
+    <button onclick="nextLevel()">下一关 →</button>
+  </div>
+</div>
+
+<script>
+// =====================
+//  题库（每关10对，可扩展）
+// =====================
+const LEVELS = [
+  {
+    name: "第一关：生字词语（一年级上册）",
+    pairs: [
+      { word: "太阳", meaning: "天空中发光发热的星球" },
+      { word: "月亮", meaning: "绕地球转的天然卫星" },
+      { word: "小草", meaning: "长在地面的绿色植物" },
+      { word: "彩虹", meaning: "雨后天空出现的七色弧形光带" },
+      { word: "春天", meaning: "四季中第一个季节，万物复苏" },
+      { word: "秋天", meaning: "四季中第三个季节，树叶变黄" },
+    ]
+  },
+  {
+    name: "第二关：词语辨析（二年级）",
+    pairs: [
+      { word: "高兴", meaning: "感到快乐、开心" },
+      { word: "难过", meaning: "心里感到痛苦、伤心" },
+      { word: "勇敢", meaning: "不怕困难和危险" },
+      { word: "温柔", meaning: "性情柔和，不粗暴" },
+      { word: "认真", meaning: "做事严肃，不马虎" },
+      { word: "聪明", meaning: "思维敏捷，理解能力强" },
+    ]
+  },
+  {
+    name: "第三关：成语解释（三年级）",
+    pairs: [
+      { word: "守株待兔", meaning: "比喻不劳而获，坐等机会" },
+      { word: "亡羊补牢", meaning: "出了问题后想办法补救" },
+      { word: "掩耳盗铃", meaning: "自欺欺人，做荒唐的事" },
+      { word: "画龙点睛", meaning: "在关键处加一笔使全局活跃" },
+      { word: "叶公好龙", meaning: "表面喜欢，实际害怕" },
+      { word: "半途而废", meaning: "做事没做完就放弃了" },
+    ]
+  }
+];
+
+// =====================
+//  状态
+// =====================
+let currentLevel = 0;
+let score = 0;
+let pairs = [];
+let selectedLeft = null;
+let selectedRight = null;
+let matchedCount = 0;
+let mistakes = 0;
+let matchedPairs = []; // {leftEl, rightEl, color}
+
+const COLORS = ["#e74c3c","#8e44ad","#2980b9","#27ae60","#e67e22","#16a085"];
+
+// =====================
+//  初始化关卡
+// =====================
+function initLevel(lvl) {
+  currentLevel = lvl;
+  document.getElementById("level-display").textContent = lvl + 1;
+  document.getElementById("total-levels").textContent = LEVELS.length;
+
+  const data = LEVELS[lvl];
+  // 打乱顺序
+  pairs = shuffle([...data.pairs]);
+  const rightItems = shuffle(pairs.map(p => p.meaning));
+
+  matchedCount = 0;
+  mistakes = 0;
+  matchedPairs = [];
+  selectedLeft = null;
+  selectedRight = null;
+
+  clearLines();
+
+  // 渲染左列（词语）
+  const leftCol = document.getElementById("left-col");
+  leftCol.innerHTML = "";
+  pairs.forEach((p, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.textContent = p.word;
+    card.dataset.index = i;
+    card.dataset.side = "left";
+    card.addEventListener("click", () => onCardClick(card));
+    leftCol.appendChild(card);
+  });
+
+  // 渲染右列（释义，已打乱）
+  const rightCol = document.getElementById("right-col");
+  rightCol.innerHTML = "";
+  rightItems.forEach((meaning, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.textContent = meaning;
+    card.dataset.meaning = meaning;
+    card.dataset.side = "right";
+    card.addEventListener("click", () => onCardClick(card));
+    rightCol.appendChild(card);
+  });
+
+  updateProgress();
+  document.getElementById("hint").textContent = `📖 ${data.name} — 共 ${pairs.length} 对，加油！`;
+}
+
+// =====================
+//  点击处理
+// =====================
+function onCardClick(card) {
+  if (card.classList.contains("matched") || card.classList.contains("hidden")) return;
+
+  const side = card.dataset.side;
+
+  if (side === "left") {
+    // 取消已选
+    document.querySelectorAll(".card.selected").forEach(c => {
+      if (c.dataset.side === "left") c.classList.remove("selected");
+    });
+    card.classList.add("selected");
+    selectedLeft = card;
+  } else {
+    document.querySelectorAll(".card.selected").forEach(c => {
+      if (c.dataset.side === "right") c.classList.remove("selected");
+    });
+    card.classList.add("selected");
+    selectedRight = card;
+  }
+
+  // 两边都选了，判断
+  if (selectedLeft && selectedRight) {
+    checkMatch();
+  }
+}
+
+function checkMatch() {
+  const lvl = LEVELS[currentLevel];
+  const wordIdx = parseInt(selectedLeft.dataset.index);
+  const correctMeaning = lvl.pairs[wordIdx].meaning;
+  const chosenMeaning = selectedRight.dataset.meaning;
+
+  if (correctMeaning === chosenMeaning) {
+    // 正确！
+    const color = COLORS[matchedCount % COLORS.length];
+    drawLine(selectedLeft, selectedRight, color);
+
+    selectedLeft.classList.remove("selected");
+    selectedRight.classList.remove("selected");
+    selectedLeft.classList.add("matched");
+    selectedRight.classList.add("matched");
+
+    matchedPairs.push({ leftEl: selectedLeft, rightEl: selectedRight, color });
+
+    score += 10;
+    document.getElementById("score").textContent = score;
+    matchedCount++;
+    updateProgress();
+
+    document.getElementById("hint").textContent = "✅ 答对啦！继续加油！";
+
+    if (matchedCount === pairs.length) {
+      setTimeout(showComplete, 600);
+    }
+  } else {
+    // 错误
+    mistakes++;
+    [selectedLeft, selectedRight].forEach(c => {
+      c.classList.add("wrong");
+      setTimeout(() => c.classList.remove("wrong", "selected"), 500);
+    });
+    document.getElementById("hint").textContent = `❌ 再想想，这个词和解释不匹配哦！（已错 ${mistakes} 次）`;
+  }
+
+  selectedLeft = null;
+  selectedRight = null;
+}
+
+// =====================
+//  进度 & 完成
+// =====================
+function updateProgress() {
+  const total = LEVELS.reduce((s, l) => s + l.pairs.length, 0);
+  const done = LEVELS.slice(0, currentLevel).reduce((s, l) => s + l.pairs.length, 0) + matchedCount;
+  document.getElementById("progress").style.width = (done / total * 100) + "%";
+}
+
+function showComplete() {
+  const stars = mistakes === 0 ? "⭐⭐⭐" : mistakes <= 2 ? "⭐⭐" : "⭐";
+  document.getElementById("modal-stars").textContent = stars;
+  document.getElementById("modal-title").textContent =
+    mistakes === 0 ? "满分通过！太厉害了！🎉" : mistakes <= 2 ? "完成啦！做得很好！😊" : "通关成功！继续努力！💪";
+  document.getElementById("modal-msg").textContent =
+    `本关得分：${matchedCount * 10} 分，错误 ${mistakes} 次。总积分：${score} 分`;
+
+  const nextBtn = document.querySelector(".modal button");
+  if (currentLevel >= LEVELS.length - 1) {
+    nextBtn.textContent = "🎊 全部完成！再玩一次";
+    nextBtn.onclick = () => { location.reload(); };
+  } else {
+    nextBtn.textContent = "下一关 →";
+    nextBtn.onclick = nextLevel;
+  }
+
+  document.getElementById("overlay").classList.add("show");
+}
+
+function nextLevel() {
+  document.getElementById("overlay").classList.remove("show");
+  if (currentLevel + 1 < LEVELS.length) {
+    initLevel(currentLevel + 1);
+  }
+}
+
+function resetLevel() {
+  score -= matchedCount * 10;
+  if (score < 0) score = 0;
+  document.getElementById("score").textContent = score;
+  initLevel(currentLevel);
+}
+
+// =====================
+//  提示功能
+// =====================
+function showHintForSelected() {
+  if (!selectedLeft) {
+    document.getElementById("hint").textContent = "💡 先点击左边一个词语，再点击提示按钮！";
+    return;
+  }
+  const idx = parseInt(selectedLeft.dataset.index);
+  const meaning = LEVELS[currentLevel].pairs[idx].meaning;
+  document.getElementById("hint").textContent = `💡 「${selectedLeft.textContent}」的意思是：${meaning}`;
+  score = Math.max(0, score - 2); // 提示扣2分
+  document.getElementById("score").textContent = score;
+}
+
+// =====================
+//  SVG 连线
+// =====================
+function drawLine(leftEl, rightEl, color) {
+  const svg = document.getElementById("line-canvas");
+  const lr = leftEl.getBoundingClientRect();
+  const rr = rightEl.getBoundingClientRect();
+  const x1 = lr.right + window.scrollX;
+  const y1 = lr.top + lr.height / 2 + window.scrollY;
+  const x2 = rr.left + window.scrollX;
+  const y2 = rr.top + rr.height / 2 + window.scrollY;
+
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const cx = (x1 + x2) / 2;
+  line.setAttribute("d", `M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`);
+  line.setAttribute("class", "match-line");
+  line.setAttribute("stroke", color);
+  svg.appendChild(line);
+}
+
+function clearLines() {
+  document.getElementById("line-canvas").innerHTML = "";
+}
+
+// 窗口缩放时重绘连线
+window.addEventListener("resize", () => {
+  clearLines();
+  matchedPairs.forEach(({leftEl, rightEl, color}) => drawLine(leftEl, rightEl, color));
+});
+
+// =====================
+//  工具
+// =====================
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// =====================
+//  启动
+// =====================
+initLevel(0);
+</script>
+</body>
+</html>
