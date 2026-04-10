@@ -516,10 +516,11 @@ function drawLine(leftEl, rightEl, color) {
   const svg = document.getElementById("line-canvas");
   const lr = leftEl.getBoundingClientRect();
   const rr = rightEl.getBoundingClientRect();
-  const x1 = lr.right + window.scrollX;
-  const y1 = lr.top + lr.height / 2 + window.scrollY;
-  const x2 = rr.left + window.scrollX;
-  const y2 = rr.top + rr.height / 2 + window.scrollY;
+  // SVG 是 position:fixed，直接用视口坐标，不加 scrollX/Y
+  const x1 = lr.right;
+  const y1 = lr.top + lr.height / 2;
+  const x2 = rr.left;
+  const y2 = rr.top + rr.height / 2;
 
   const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
   const cx = (x1 + x2) / 2;
